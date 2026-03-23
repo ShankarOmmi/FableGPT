@@ -23,19 +23,19 @@ def load_finetuned_model(checkpoint_path, device, strict=True):
     if "model_state" in checkpoint:
         gpt.load_state_dict(checkpoint["model_state"], strict=strict)
 
-        print("📦 Checkpoint Info:")
+        print("Checkpoint Info:")
         print(f"  Epoch: {checkpoint.get('epoch', 'N/A')}")
         print(f"  Val Loss: {checkpoint.get('val_loss', 'N/A')}")
     else:
         # Direct state_dict
         gpt.load_state_dict(checkpoint, strict=strict)
-        print("📦 Loaded raw state_dict")
+        print("Loaded raw state_dict")
 
     # Move to device
     gpt = gpt.to(device)
     gpt.eval()
 
-    print("✅ Fine-tuned model loaded successfully!")
+    print("Fine-tuned model loaded successfully!")
 
     return gpt
 

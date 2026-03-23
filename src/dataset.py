@@ -1,6 +1,9 @@
 import json
+import random
+import torch
 import tiktoken
 from torch.utils.data import Dataset
+
 
 def load_jsonl(file_path):
     data = []
@@ -24,13 +27,11 @@ def format_input(entry):
 
     return instruction_text + input_text
 
+
 def format_training_text(entry):
     prompt = format_input(entry)
-
     response_text = f"\n\n### Response:\n{entry.get('output', '')}"
-
     return prompt + response_text
-
 
 
 def get_tokenizer():
@@ -42,7 +43,6 @@ def tokenize_entry(entry, tokenizer):
     token_ids = tokenizer.encode(full_text)
     return token_ids
 
-import random
 
 def split_dataset(data, train_split=0.8, test_split=0.1, seed=123):
     # Reproducibility
@@ -59,7 +59,6 @@ def split_dataset(data, train_split=0.8, test_split=0.1, seed=123):
 
     return train_data, val_data, test_data
 
-import torch
 
 def custom_collate_fn(
     batch,
@@ -92,19 +91,19 @@ def custom_collate_fn(
             batch_max_length - len(token_ids_with_eos)
         )
 
-        # Shift
-        inputs = torch.tensor(padded[:-1], dtype=torch.long)
-        targets = torch.tensor(padded[1:], dtype=torch.long)
+        # Shift for next-token prediction
+        inputs = torch.tensor(padded[:-1], dtype=torch.long).to(device)
+        targets = torch.tensor(padded[1:], dtype=torch.long).to(device)
 
-        # Mask instruction + input
+        # Mask instruction + input tokens (only train on response)
         if response_start > 0:
             mask_until = response_start - 1
             targets[:mask_until] = ignore_index
 
-        # Mask padding
-        targets[original_len:] = ignore_index
+        # Mask padding tokens beyond sequence + EOS
+        targets[original_len + 1:] = ignore_index
 
-        # Truncate
+        # Truncate to max allowed length
         if allowed_max_length is not None:
             inputs = inputs[:allowed_max_length]
             targets = targets[:allowed_max_length]
@@ -116,8 +115,6 @@ def custom_collate_fn(
         torch.stack(inputs_lst),
         torch.stack(targets_lst),
     )
-
-
 
 
 class InstructionDataset(Dataset):
@@ -148,7 +145,7 @@ class InstructionDataset(Dataset):
 
             if response_start is None:
                 failed_count += 1
-                response_start = 0  # fallback
+                response_start = 0  # fallback: no masking applied
 
             self.encoded_texts.append({
                 "token_ids": token_ids,

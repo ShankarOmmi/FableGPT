@@ -1,5 +1,5 @@
 import torch
-import tiktoken
+import os
 
 from src.inference import load_finetuned_model
 from src.utils import (
@@ -9,48 +9,54 @@ from src.utils import (
     token_ids_to_text
 )
 from src.model import GPT2_SMALL_CONFIG
+from src.config import config
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Using device:", device)
 
-# Load model
-gpt = load_finetuned_model("checkpoints/best_model.pth", device)
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
 
-# Tokenizer
-tokenizer = tiktoken.get_encoding("gpt2")
+    checkpoint_path = "checkpoints/best_model.pth"
 
-print("\n" + "="*80)
-print("TEST GENERATION: Camel and Horse")
-print("="*80)
+    if not os.path.exists(checkpoint_path):
+        raise FileNotFoundError("Model checkpoint not found.")
 
-instruction = "Try to write a fable/moral story with the characters and title given below."
-input_text = "Input 1 (Characters): Camel, Horse\nInput 2 (Title): The Long Journey"
+    # Load model
+    gpt = load_finetuned_model(checkpoint_path, device)
 
-# Build prompt
-prompt = create_instruction_prompt(instruction, input_text)
+    # Tokenizer
+    tokenizer = tiktoken.get_encoding("gpt2")
 
-print("\nGenerated Prompt:\n", prompt)
+    instruction = "Try to write a fable/moral story with the characters and title given below."
+    input_text = "Input 1 (Characters): Camel, Horse\nInput 2 (Title): The Long Journey"
 
-# Tokenize
-idx = text_to_token_ids(prompt, tokenizer, device)
+    prompt = create_instruction_prompt(instruction, input_text)
 
-# Generate
-generated_ids = generate_with_eos(
-    model=gpt,
-    idx=idx,
-    max_new_tokens=200,
-    context_size=GPT2_SMALL_CONFIG["Context_length"],
-    top_k=40,
-    temperature=0.7,
-    eos_id=50256
-)
+    input_ids = text_to_token_ids(prompt, tokenizer, device)
 
-# Decode
-output = token_ids_to_text(generated_ids, tokenizer)
+    torch.manual_seed(config.seed)
 
-print("\nGenerated Output:\n")
+    generated_ids = generate_with_eos(
+        model=gpt,
+        idx=input_ids,
+        max_new_tokens=config.max_new_tokens,
+        context_size=GPT2_SMALL_CONFIG["Context_length"],
+        top_k=config.top_k,
+        temperature=config.temperature,
+        eos_id=50256
+    )
 
-if "### Response:\n" in output:
-    print(output.split("### Response:\n", 1)[1])
-else:
-    print(output)
+    output = token_ids_to_text(generated_ids, tokenizer)
+
+    print("\n" + "="*80)
+    print("📜 GENERATED STORY")
+    print("="*80)
+
+    if "### Response:\n" in output:
+        print(output.split("### Response:\n", 1)[1])
+    else:
+        print(output)
+
+
+if __name__ == "__main__":
+    main()

@@ -86,14 +86,14 @@ class FeedForward(nn.Module):
 
         emb_dim = cfg["emb_dim"]
 
-        self.net = nn.Sequential(
+        self.layers = nn.Sequential(
             nn.Linear(emb_dim, 4 * emb_dim),
             GELU(),
             nn.Linear(4 * emb_dim, emb_dim),
         )
 
     def forward(self, x):
-        return self.net(x)
+        return self.layers(x)
 
     
 class TransformerBlock(nn.Module):

@@ -2,13 +2,14 @@ import os
 import requests
 import json
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  
 from tqdm import tqdm
 
 
 def download_and_load_gpt2(model_size, models_dir):
     """
-    Download and load GPT-2 weights.
+    Download and load GPT-2 weights from OpenAI's public blob storage.
+    Requires TensorFlow to read the .ckpt checkpoint format.
     """
 
     allowed_sizes = ("124M", "355M", "774M", "1558M")
